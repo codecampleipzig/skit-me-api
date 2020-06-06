@@ -24,13 +24,17 @@ app.use(router.routes()).use(router.allowedMethods());
 
 const server = app.listen(1234, () => console.log("running on port 1234"));
 const io = socketIo(server);
+const room = {
+  players: [],
+  roomId: 3
+}
 
 io.on("connection", (socket) => {
   console.log("a user connected");
-  console.log(socket);
   socket.on("joinRoom", (data, respond) => {
     console.log(data);
-    respond("you joined the room");
+    room.players.push(data.userName)
+    respond(room);
   });
   socket.on("disconnect", () => {
     console.log("a user disconnected");
