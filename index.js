@@ -1,4 +1,3 @@
-"use strict";
 const koa = require("koa");
 const koaRouter = require("koa-router");
 const socketIo = require("socket.io");
@@ -7,13 +6,13 @@ const cors = require("@koa/cors");
 const app = new koa();
 const router = new koaRouter();
 
-router.get("koala", "/", (ctx) => {
+router.get("koala", "/", ctx => {
   ctx.body = "Welcome! To the Koala Book of Everything!";
 });
 
-router.post("/rooms", (ctx) => {
+router.post("/rooms", ctx => {
   ctx.body = {
-    roomId: 3,
+    roomId: 3
   };
 });
 
@@ -27,15 +26,15 @@ const io = socketIo(server);
 const room = {
   players: [],
   roomId: 3
-}
+};
 
-io.on("connection", (socket) => {
+io.on("connection", socket => {
   console.log("a user connected");
   socket.on("joinRoom", (data, respond) => {
     console.log(data);
-    room.players.push(data.userName)
+    room.players.push(data.userName);
     respond(room);
-    socket.broadcast.emit("roomUpdate", room)
+    socket.broadcast.emit("roomUpdate", room);
   });
 
   socket.on("disconnect", () => {
