@@ -1,42 +1,38 @@
-'use strict';
-const koa = require('koa')
-const koaRouter = require('koa-router')
-const socketIo = require('socket.io')
-const cors = require('@koa/cors')
+"use strict";
+const koa = require("koa");
+const koaRouter = require("koa-router");
+const socketIo = require("socket.io");
+const cors = require("@koa/cors");
 
+const app = new koa();
+const router = new koaRouter();
 
-const app = new koa()
-const router = new koaRouter()
-
-
-router.get('koala', '/', (ctx) => {
-  ctx.body = "Welcome! To the Koala Book of Everything!"
-})
+router.get("koala", "/", (ctx) => {
+  ctx.body = "Welcome! To the Koala Book of Everything!";
+});
 
 router.post("/rooms", (ctx) => {
   ctx.body = {
     roomId: 3,
-
-  }
-})
+  };
+});
 
 // install router to app
 app.use(cors());
 
-app.use(router.routes())
-  .use(router.allowedMethods())
+app.use(router.routes()).use(router.allowedMethods());
 
+const server = app.listen(1234, () => console.log("running on port 1234"));
+const io = socketIo(server);
 
-const server = app.listen(1234, () => console.log('running on port 1234'));
-const io = socketIo(server)
-
-io.on('connection', (socket) => {
-  console.log('a user connected');
-  socket.on("hello", (data)=>{
+io.on("connection", (socket) => {
+  console.log("a user connected");
+  console.log(socket);
+  socket.on("joinRoom", (data, respond) => {
     console.log(data);
-    socket.emit("hello back","hello from server")
-  })
-  socket.on('disconnect',()=>{
-    console.log("a user disconnected")
-  })
+    respond("you joined the room");
+  });
+  socket.on("disconnect", () => {
+    console.log("a user disconnected");
+  });
 });
