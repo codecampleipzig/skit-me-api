@@ -35,7 +35,9 @@ io.on("connection", (socket) => {
     console.log(data);
     room.players.push(data.userName)
     respond(room);
+    socket.broadcast.emit("roomUpdate", room)
   });
+
   socket.on("disconnect", () => {
     console.log("a user disconnected");
   });
