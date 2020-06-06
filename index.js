@@ -9,14 +9,16 @@ const router = new koaRouter();
 
 const rooms = {};
 
-router.post("/rooms", (ctx) => {
+const users = {};
+
+router.post("/rooms", ctx => {
   // generate random unique room id with uuidv4
   const roomId = uuidv4();
   // create empty room for roomId
   rooms[roomId] = { roomId, players: [] };
   // send generated room id to player so that he/she can reenter the room
   ctx.body = {
-    roomId,
+    roomId
   };
 });
 
@@ -28,43 +30,45 @@ app.use(router.routes()).use(router.allowedMethods());
 const server = app.listen(1234, () => console.log("running on port 1234"));
 const io = socketIo(server);
 
-io.on("connection", (socket) => {
+io.on("connection", socket => {
   console.log("a user connected");
+  let room = null;
   socket.on("joinRoom", ({ userName, roomId }, respond) => {
-    const room = rooms[roomId];
+    if (room) {
+      respond({
+        error: "already connected"
+      });
+    }
+    room = rooms[roomId];
     if (!room) {
       respond({
-        error: "room does not exist",
+        error: "room does not exist"
       });
 
       return;
     }
 
     socket.join(roomId, () => {
-      const userId = uuidv4();
       room.players.push({
         userName,
         socketId: socket.id,
         connected: true,
-        ready: false,
+        ready: false
       });
-      respond(room);
+
+      respond({
+        room
+      });
       socket.to(roomId).emit("roomUpdate", room);
     });
   });
 
   socket.on("disconnect", () => {
-    console.log("a user disconnected");
-    console.log(socket.rooms);
-    const socketRooms = Object.keys(socket.rooms);
-    if (socketRooms.length) {
-      // if player disconnects kick him out of the room
-      const roomId = socketRooms[0];
-      console.log(roomId);
-      const room = rooms[roomId];
-      const player = room.players.find(player.socketId == socket.id);
-      player.connected = false;
-      socket.to(roomId).emit("roomUpdate", room);
+    if (room) {
+      const user = room.players.find(player => player.socketId == socket.id);
+      user.connected = false;
+      user.socketId = null;
+      socket.to(room.roomId).emit("roomUpdate", room);
     }
   });
 });
