@@ -1,4 +1,3 @@
-console.log("Hello World");
 'use strict';
 const koa = require('koa')
 const koaRouter = require('koa-router')
