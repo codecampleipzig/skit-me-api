@@ -7,6 +7,8 @@ const { v4: uuidv4 } = require("uuid");
 const app = new koa();
 const router = new koaRouter();
 
+const PORT = process.env.PORT || 1234;
+
 const rooms = {};
 const NUM_ROUNDS = 3;
 
@@ -67,7 +69,7 @@ app.use(cors());
 
 app.use(router.routes()).use(router.allowedMethods());
 
-const server = app.listen(1234, () => console.log("running on port 1234"));
+const server = app.listen(PORT, () => console.log("running on port 1234"));
 const io = socketIo(server);
 
 io.on("connection", socket => {
