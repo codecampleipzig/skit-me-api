@@ -9,14 +9,14 @@ const router = new KoaRouter();
 
 const rooms = {};
 
-router.post("/rooms", (ctx) => {
+router.post("/rooms", ctx => {
   // generate random unique room id with uuidv4
   const roomId = uuidv4();
   // create empty room for roomId
   rooms[roomId] = { roomId, players: [] };
   // send generated room id to player so that he/she can reenter the room
   ctx.body = {
-    roomId,
+    roomId
   };
 });
 
@@ -28,20 +28,20 @@ app.use(router.routes()).use(router.allowedMethods());
 const server = app.listen(1234, () => console.log("running on port 1234"));
 const io = socketIo(server);
 
-io.on("connection", (socket) => {
+io.on("connection", socket => {
   console.log("a user connected");
   let room = null;
   let user = 0;
   socket.on("joinRoom", ({ userName, roomId }, respond) => {
     if (room) {
       respond({
-        error: "already connected",
+        error: "already connected"
       });
     }
     room = rooms[roomId];
     if (!room) {
       respond({
-        error: "room does not exist",
+        error: "room does not exist"
       });
 
       return;
@@ -52,12 +52,12 @@ io.on("connection", (socket) => {
         userName,
         socketId: socket.id,
         connected: true,
-        ready: false,
+        ready: false
       };
-      room.players.push({});
+      room.players.push(user);
 
       respond({
-        room,
+        room
       });
       socket.to(roomId).emit("roomUpdate", room);
     });
@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
     user.ready = true;
     io.to(room.roomId).emit("roomUpdate", room);
 
-    if (room.players.every((player) => player.ready)) {
+    if (room.players.every(player => player.ready)) {
       io.to(room.roomId).emit("startSeed");
     }
   });
