@@ -31,16 +31,54 @@ const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
 const io = socketIo(server);
 
 io.on("connection", socket => {
-  console.log("a user connected");
+  console.log("a player connected");
   let room = null;
-  let user = 0;
+  let player = null;
+
+  function sendEndGame() {
+    io.to(room.roomId).emit("endGame", "DONE");
+    room.game = null;
+    room.players.forEach(player => (player.ready = false));
+  }
+
+  function getSanitizedRoom() {
+    const { roomId, players } = room;
+    return {
+      roomId,
+      players: players.map(player => ({
+        userName: player.userName,
+        connected: player.connected,
+        ready: player.ready
+      }))
+    };
+  }
+
+  function goToPhase(phase, phaseStartEvent) {
+    for (let i = 0; i < room.players.length; i += 1) {
+      const thisPlayer = room.players[i];
+      // find Sheet of plaxyer i
+      const resultOfPlayer = room.game.stage.results.find(
+        result => result.player.id == thisPlayer.id
+      );
+
+      // find player to send that sheet to
+      const playerToSendResultTo =
+        room.players[i == room.players.length - 1 ? 0 : i + 1];
+      // send to sheet
+      playerToSendResultTo.socket.emit(phaseStartEvent, resultOfPlayer.content);
+    }
+    room.game.stage = { name: phase, results: [] };
+  }
+
   socket.on("joinRoom", ({ userName, roomId }, respond) => {
+    // What happens here ?
     if (room) {
       respond({
         error: "already connected"
       });
     }
     room = rooms[roomId];
+    // if roomId does not exist, respond with error
     if (!room) {
       respond({
         error: "room does not exist"
@@ -50,24 +88,27 @@ io.on("connection", socket => {
     }
 
     socket.join(roomId, () => {
-      user = {
+      player = {
+        id: uuidv4(),
         userName,
-        socketId: socket.id,
+        socket,
         connected: true,
         ready: false
       };
-      room.players.push(user);
-
+      // where is room.players ?
+      room.players.push(player);
+      // what does respond do?
       respond({
-        room
+        room: getSanitizedRoom(),
+        playerId: player.id
       });
-      socket.to(roomId).emit("roomUpdate", room);
+      socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
     });
   });
 
   socket.on("signalReady", () => {
-    user.ready = true;
-    io.to(room.roomId).emit("roomUpdate", room);
+    player.ready = true;
+    io.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
 
     if (room.players.every(player => player.ready)) {
       room.game = {
@@ -81,16 +122,10 @@ io.on("connection", socket => {
     }
   });
 
-  function sendEndGame() {
-    io.to(room.roomId).emit("endGame", room.game.history);
-    room.game = null;
-    room.players.forEach(player => (player.ready = false));
-  }
-
-  socket.on("completeWriting", descriptionTitle => {
+  socket.on("completeWriting", content => {
     room.game.stage.results.push({
-      user,
-      descriptionTitle
+      player,
+      content
     });
 
     if (room.game.stage.results.length == room.players.length) {
@@ -99,16 +134,15 @@ io.on("connection", socket => {
       if (room.game.history.length == room.players.length) {
         sendEndGame();
       } else {
-        io.to(room.roomId).emit("startDrawing", descriptionTitle);
-        room.game.stage = { name: "DrawingPhase", results: [] };
+        goToPhase("DrawingPhase", "startDrawing");
       }
     }
   });
 
-  socket.on("completeDrawing", drawingURL => {
+  socket.on("completeDrawing", content => {
     room.game.stage.results.push({
-      user,
-      drawingURL
+      player,
+      content
     });
 
     if (room.game.stage.results.length == room.players.length) {
@@ -116,17 +150,16 @@ io.on("connection", socket => {
       if (room.game.history.length == room.players.length) {
         sendEndGame();
       } else {
-        io.to(room.roomId).emit("startWriting", drawingURL);
-        room.game.stage = { name: "WritingPhase", results: [] };
+        goToPhase("WritingPhase", "StartWriting");
       }
     }
   });
 
   socket.on("disconnect", () => {
-    if (user) {
-      user.connected = false;
-      user.socketId = null;
-      socket.to(room.roomId).emit("roomUpdate", room);
+    if (player) {
+      player.connected = false;
+      player.socket = null;
+      socket.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
     }
   });
 });
