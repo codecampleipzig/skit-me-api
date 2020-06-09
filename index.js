@@ -100,7 +100,7 @@ io.on("connection", socket => {
       // what does respond do?
       respond({
         room: getSanitizedRoom(),
-        playerId: player.id
+        playerId: player.id,
       });
       socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
     });
@@ -116,17 +116,28 @@ io.on("connection", socket => {
           name: "GameSeedPhase",
           results: []
         },
-        history: []
+        history: [],
+        sheets: {}
       };
-      io.to(room.roomId).emit("startSeed");
+      for (const player of room.players) {
+        const sheetId = uuidv4();
+        room.game.sheets[sheetId] = [];
+        player.socket.emit("startSeed", sheetId)
+      }
     }
   });
 
-  socket.on("completeWriting", content => {
+  socket.on("completeWriting", (content,sheetId) => {
     room.game.stage.results.push({
       player,
-      content
+      content,
+      sheetId
     });
+    room.game.sheets[sheetId].push({
+      type: "writing",
+      content,
+      player: player.userName
+    })
 
     if (room.game.stage.results.length == room.players.length) {
       room.game.history.push(room.game.stage);
@@ -139,18 +150,23 @@ io.on("connection", socket => {
     }
   });
 
-  socket.on("completeDrawing", content => {
+  socket.on("completeDrawing", (content,sheetId) => {
     room.game.stage.results.push({
       player,
-      content
+      content,
+      sheetId
     });
+    room.game.sheets[sheetId].push({
+      type: "drawing",
+      content,
+      player: player.userName})
 
     if (room.game.stage.results.length == room.players.length) {
       room.game.history.push(room.game.stage);
       if (room.game.history.length == room.players.length) {
         sendEndGame();
       } else {
-        goToPhase("WritingPhase", "StartWriting");
+        goToPhase("WritingPhase", "startWriting");
       }
     }
   });
