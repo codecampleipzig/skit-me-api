@@ -11,14 +11,14 @@ const router = new KoaRouter();
 
 const rooms = {};
 
-router.post("/rooms", ctx => {
+router.post("/rooms", (ctx) => {
   // generate random unique room id with uuidv4
   const roomId = uuidv4();
   // create empty room for roomId
   rooms[roomId] = { roomId, players: [], game: null };
   // send generated room id to player so that he/she can reenter the room
   ctx.body = {
-    roomId
+    roomId,
   };
 });
 
@@ -30,42 +30,46 @@ app.use(router.routes()).use(router.allowedMethods());
 const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
 const io = socketIo(server);
 
-io.on("connection", socket => {
+io.on("connection", (socket) => {
   console.log("a player connected");
   let room = null;
   let player = null;
 
   function sendEndGame() {
-    io.to(room.roomId).emit("endGame", "DONE");
+    io.to(room.roomId).emit("endGame", "DONE", room.game.sheets);
     room.game = null;
-    room.players.forEach(player => (player.ready = false));
+    room.players.forEach((player) => (player.ready = false));
   }
 
   function getSanitizedRoom() {
     const { roomId, players } = room;
     return {
       roomId,
-      players: players.map(player => ({
+      players: players.map((player) => ({
         userName: player.userName,
         connected: player.connected,
-        ready: player.ready
-      }))
+        ready: player.ready,
+      })),
     };
   }
 
-  function goToPhase(phase, phaseStartEvent) {
+  function goToPhase(phase, phaseStartEvent, sheetId) {
     for (let i = 0; i < room.players.length; i += 1) {
       const thisPlayer = room.players[i];
       // find Sheet of plaxyer i
       const resultOfPlayer = room.game.stage.results.find(
-        result => result.player.id == thisPlayer.id
+        (result) => result.player.id == thisPlayer.id
       );
 
       // find player to send that sheet to
       const playerToSendResultTo =
         room.players[i == room.players.length - 1 ? 0 : i + 1];
       // send to sheet
-      playerToSendResultTo.socket.emit(phaseStartEvent, resultOfPlayer.content);
+      playerToSendResultTo.socket.emit(
+        phaseStartEvent,
+        resultOfPlayer.content,
+        sheetId
+      );
     }
     room.game.stage = { name: phase, results: [] };
   }
@@ -74,14 +78,14 @@ io.on("connection", socket => {
     // What happens here ?
     if (room) {
       respond({
-        error: "already connected"
+        error: "already connected",
       });
     }
     room = rooms[roomId];
     // if roomId does not exist, respond with error
     if (!room) {
       respond({
-        error: "room does not exist"
+        error: "room does not exist",
       });
 
       return;
@@ -93,7 +97,7 @@ io.on("connection", socket => {
         userName,
         socket,
         connected: true,
-        ready: false
+        ready: false,
       };
       // where is room.players ?
       room.players.push(player);
@@ -110,34 +114,37 @@ io.on("connection", socket => {
     player.ready = true;
     io.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
 
-    if (room.players.every(player => player.ready)) {
+    if (room.players.every((player) => player.ready)) {
       room.game = {
         stage: {
           name: "GameSeedPhase",
-          results: []
+          results: [],
         },
         history: [],
-        sheets: {}
+        sheets: {},
       };
+      console.log("test");
       for (const player of room.players) {
         const sheetId = uuidv4();
         room.game.sheets[sheetId] = [];
-        player.socket.emit("startSeed", sheetId)
+        player.socket.emit("startSeed", sheetId);
+        console.log(sheetId, "test2");
       }
     }
   });
 
-  socket.on("completeWriting", (content,sheetId) => {
+  socket.on("completeWriting", (content, sheetId) => {
     room.game.stage.results.push({
       player,
       content,
-      sheetId
+      sheetId,
     });
+    console.log(sheetId);
     room.game.sheets[sheetId].push({
       type: "writing",
       content,
-      player: player.userName
-    })
+      player: player.userName,
+    });
 
     if (room.game.stage.results.length == room.players.length) {
       room.game.history.push(room.game.stage);
@@ -145,28 +152,36 @@ io.on("connection", socket => {
       if (room.game.history.length == room.players.length) {
         sendEndGame();
       } else {
-        goToPhase("DrawingPhase", "startDrawing");
+        goToPhase("DrawingPhase", "startDrawing", sheetId);
       }
     }
   });
 
-  socket.on("completeDrawing", (content,sheetId) => {
+  socket.on("completeDrawing", (content, sheetId) => {
     room.game.stage.results.push({
       player,
       content,
-      sheetId
+      sheetId,
     });
+
+    console.log(sheetId);
+    console.log(
+      room.game.sheets[sheetId].type,
+      room.game.sheets[sheetId].player
+    );
+
     room.game.sheets[sheetId].push({
       type: "drawing",
       content,
-      player: player.userName})
+      player: player.userName,
+    });
 
     if (room.game.stage.results.length == room.players.length) {
       room.game.history.push(room.game.stage);
       if (room.game.history.length == room.players.length) {
         sendEndGame();
       } else {
-        goToPhase("WritingPhase", "startWriting");
+        goToPhase("WritingPhase", "startWriting", sheetId);
       }
     }
   });
