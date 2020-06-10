@@ -36,7 +36,10 @@ io.on("connection", (socket) => {
   let player = null;
 
   function sendEndGame() {
-    io.to(room.roomId).emit("endGame", "DONE", room.game.sheets);
+    console.log("endgame");
+    io.to(room.roomId).emit("endGame", "DONE", room.game.sheets.content);
+    console.log("endgame1");
+    console.log(room.game.sheets);
     room.game = null;
     room.players.forEach((player) => (player.ready = false));
   }
@@ -53,7 +56,7 @@ io.on("connection", (socket) => {
     };
   }
 
-  function goToPhase(phase, phaseStartEvent, sheetId) {
+  function goToPhase(phase, phaseStartEvent) {
     for (let i = 0; i < room.players.length; i += 1) {
       const thisPlayer = room.players[i];
       // find Sheet of plaxyer i
@@ -68,7 +71,9 @@ io.on("connection", (socket) => {
       playerToSendResultTo.socket.emit(
         phaseStartEvent,
         resultOfPlayer.content,
-        sheetId
+        resultOfPlayer.sheetId,
+
+        console.log(resultOfPlayer.sheetId, "playerToSendResultTo")
       );
     }
     room.game.stage = { name: phase, results: [] };
@@ -101,7 +106,7 @@ io.on("connection", (socket) => {
       };
       // where is room.players ?
       room.players.push(player);
-      // what does respond do?
+
       respond({
         room: getSanitizedRoom(),
         playerId: player.id,
@@ -123,7 +128,6 @@ io.on("connection", (socket) => {
         history: [],
         sheets: {},
       };
-      console.log("test");
       for (const player of room.players) {
         const sheetId = uuidv4();
         room.game.sheets[sheetId] = [];
@@ -139,12 +143,14 @@ io.on("connection", (socket) => {
       content,
       sheetId,
     });
-    console.log(sheetId);
+    console.log(sheetId, "completeWriting");
     room.game.sheets[sheetId].push({
       type: "writing",
       content,
       player: player.userName,
+      playerId: player,
     });
+    console.log(room.game.sheets);
 
     if (room.game.stage.results.length == room.players.length) {
       room.game.history.push(room.game.stage);
@@ -164,11 +170,7 @@ io.on("connection", (socket) => {
       sheetId,
     });
 
-    console.log(sheetId);
-    console.log(
-      room.game.sheets[sheetId].type,
-      room.game.sheets[sheetId].player
-    );
+    console.log(sheetId, "completeDrawing");
 
     room.game.sheets[sheetId].push({
       type: "drawing",
