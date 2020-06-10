@@ -29,7 +29,7 @@ app.use(router.routes()).use(router.allowedMethods());
 
 const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
 const io = socketIo(server);
-io.origins("*:*");
+io.origins("https://heuristic-stonebraker-43aa0c.netlify.app");
 
 io.on("connection", (socket) => {
   console.log("a player connected");
