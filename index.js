@@ -97,22 +97,28 @@ io.on("connection", (socket) => {
       return;
     }
 
-    socket.join(roomId, () => {
-      player = {
-        id: uuidv4(),
-        userName,
-        socket,
-        connected: true,
-        ready: false,
-      };
-      // where is room.players ?
-      room.players.push(player);
+      socket.join(roomId, () => {
+          if (room.players.length < 8) {
+              player = {
+                  id: uuidv4(),
+                  userName,
+                  socket,
+                  connected: true,
+                  ready: false,
+              };
+              // where is room.players ?
+              room.players.push(player);
 
-      respond({
-        room: getSanitizedRoom(),
-        playerId: player.id,
-      });
-      socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
+              respond({
+                  room: getSanitizedRoom(),
+                  playerId: player.id,
+              });
+              socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
+          } else {        
+              respond({
+                  error: "The room has already the maximum number of players in it!"
+              })
+          }
     });
   });
 
@@ -120,7 +126,7 @@ io.on("connection", (socket) => {
     player.ready = true;
     io.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
 
-    if (room.players.every((player) => player.ready)) {
+    if (room.players.every((player) => player.ready) && room.players.length > 1 ) {
       room.game = {
         stage: {
           name: "GameSeedPhase",
@@ -194,6 +200,11 @@ io.on("connection", (socket) => {
     if (player) {
       player.connected = false;
       player.socket = null;
+      if (!room.players.some(player => player.connected)) {
+            delete rooms[room.roomId];
+            console.log(Object.keys(rooms).length); 
+            return;
+        }
       socket.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
     }
   });
