@@ -37,9 +37,10 @@ io.on("connection", (socket) => {
 
   function sendEndGame() {
     console.log("endgame");
-    io.to(room.roomId).emit("endGame", "DONE", room.game.sheets.content);
-    console.log("endgame1");
-    console.log(room.game.sheets);
+    io.to(room.roomId).emit("endGame", "DONE", room.game.sheets);
+      
+    // console.log("endgame1");
+    // console.log(room.game.sheets);
     room.game = null;
     room.players.forEach((player) => (player.ready = false));
   }
@@ -148,7 +149,7 @@ io.on("connection", (socket) => {
       type: "writing",
       content,
       player: player.userName,
-      playerId: player,
+      playerId: player.id,
     });
     console.log(room.game.sheets);
 
@@ -175,7 +176,8 @@ io.on("connection", (socket) => {
     room.game.sheets[sheetId].push({
       type: "drawing",
       content,
-      player: player.userName,
+        player: player.userName,
+       playerId: player.id,
     });
 
     if (room.game.stage.results.length == room.players.length) {
