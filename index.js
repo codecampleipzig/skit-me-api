@@ -40,6 +40,7 @@ io.on("connection", (socket) => {
     io.to(room.roomId).emit("endGame", "DONE", room.game.sheets.content);
     console.log("endgame1");
     console.log(room.game.sheets);
+    console.log(room.game.sheets.content, "content");
     room.game = null;
     room.players.forEach((player) => (player.ready = false));
   }
