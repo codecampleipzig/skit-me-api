@@ -5,6 +5,7 @@ const cors = require("@koa/cors");
 const { v4: uuidv4 } = require("uuid");
 
 const PORT = process.env.PORT || 1234;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:8080";
 
 const app = new Koa();
 const router = new KoaRouter();
@@ -28,8 +29,10 @@ app.use(cors());
 app.use(router.routes()).use(router.allowedMethods());
 
 const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
-const io = socketIo(server);
-io.origins(process.env.FRONTEND_URL || "http://localhost:8080");
+const io = socketIo(server, {
+  origins: FRONTEND_URL
+});
+io.origins(FRONTEND_URL);
 
 io.on("connection", socket => {
   console.log("a player connected");
