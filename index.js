@@ -75,13 +75,13 @@ io.on("connection", (socket) => {
       const playerToSendResultTo =
         room.players[i == room.players.length - 1 ? 0 : i + 1];
       // send to sheet
-      playerToSendResultTo.socket.emit(
-        phaseStartEvent,
-        resultOfPlayer.content,
-        resultOfPlayer.sheetId,
-
-        console.log(resultOfPlayer.sheetId, "playerToSendResultTo")
-      );
+      if (playerToSendResultTo.socket) {
+        playerToSendResultTo.socket.emit(
+          phaseStartEvent,
+          resultOfPlayer.content,
+          resultOfPlayer.sheetId
+        );
+      }
     }
     room.game.stage = { name: phase, results: [] };
   }
@@ -147,7 +147,9 @@ io.on("connection", (socket) => {
       for (const player of room.players) {
         const sheetId = uuidv4();
         room.game.sheets[sheetId] = [];
-        player.socket.emit("startSeed", sheetId);
+        if (player.socket) {
+          player.socket.emit("startSeed", sheetId);
+        }
         console.log(sheetId, "test2");
       }
     }
