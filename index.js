@@ -11,14 +11,14 @@ const router = new KoaRouter();
 
 const rooms = {};
 
-router.post("/rooms", (ctx) => {
+router.post("/rooms", ctx => {
   // generate random unique room id with uuidv4
   const roomId = uuidv4();
   // create empty room for roomId
   rooms[roomId] = { roomId, players: [], game: null };
   // send generated room id to player so that he/she can reenter the room
   ctx.body = {
-    roomId,
+    roomId
   };
 });
 
@@ -29,9 +29,9 @@ app.use(router.routes()).use(router.allowedMethods());
 
 const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
 const io = socketIo(server);
-io.origins("*:*");
+io.origins("http://localhost:8080");
 
-io.on("connection", (socket) => {
+io.on("connection", socket => {
   console.log("a player connected");
   let room = null;
   let player = null;
@@ -39,22 +39,22 @@ io.on("connection", (socket) => {
   function sendEndGame() {
     console.log("endgame");
     io.to(room.roomId).emit("endGame", "DONE", room.game.sheets);
-      
+
     // console.log("endgame1");
     // console.log(room.game.sheets);
     room.game = null;
-    room.players.forEach((player) => (player.ready = false));
+    room.players.forEach(player => (player.ready = false));
   }
 
   function getSanitizedRoom() {
     const { roomId, players } = room;
     return {
       roomId,
-      players: players.map((player) => ({
+      players: players.map(player => ({
         userName: player.userName,
         connected: player.connected,
-        ready: player.ready,
-      })),
+        ready: player.ready
+      }))
     };
   }
 
@@ -63,7 +63,7 @@ io.on("connection", (socket) => {
       const thisPlayer = room.players[i];
       // find Sheet of plaxyer i
       const resultOfPlayer = room.game.stage.results.find(
-        (result) => result.player.id == thisPlayer.id
+        result => result.player.id == thisPlayer.id
       );
 
       // find player to send that sheet to
@@ -85,41 +85,41 @@ io.on("connection", (socket) => {
     // What happens here ?
     if (room) {
       respond({
-        error: "already connected",
+        error: "already connected"
       });
     }
     room = rooms[roomId];
     // if roomId does not exist, respond with error
     if (!room) {
       respond({
-        error: "room does not exist",
+        error: "room does not exist"
       });
 
       return;
     }
 
-      socket.join(roomId, () => {
-          if (room.players.length < 8) {
-              player = {
-                  id: uuidv4(),
-                  userName,
-                  socket,
-                  connected: true,
-                  ready: false,
-              };
-              // where is room.players ?
-              room.players.push(player);
+    socket.join(roomId, () => {
+      if (room.players.length < 8) {
+        player = {
+          id: uuidv4(),
+          userName,
+          socket,
+          connected: true,
+          ready: false
+        };
+        // where is room.players ?
+        room.players.push(player);
 
-              respond({
-                  room: getSanitizedRoom(),
-                  playerId: player.id,
-              });
-              socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
-          } else {        
-              respond({
-                  error: "The room has already the maximum number of players in it!"
-              })
-          }
+        respond({
+          room: getSanitizedRoom(),
+          playerId: player.id
+        });
+        socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
+      } else {
+        respond({
+          error: "The room has already the maximum number of players in it!"
+        });
+      }
     });
   });
 
@@ -127,14 +127,14 @@ io.on("connection", (socket) => {
     player.ready = true;
     io.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
 
-    if (room.players.every((player) => player.ready) && room.players.length > 1 ) {
+    if (room.players.every(player => player.ready) && room.players.length > 1) {
       room.game = {
         stage: {
           name: "GameSeedPhase",
-          results: [],
+          results: []
         },
         history: [],
-        sheets: {},
+        sheets: {}
       };
       for (const player of room.players) {
         const sheetId = uuidv4();
@@ -149,14 +149,14 @@ io.on("connection", (socket) => {
     room.game.stage.results.push({
       player,
       content,
-      sheetId,
+      sheetId
     });
     console.log(sheetId, "completeWriting");
     room.game.sheets[sheetId].push({
       type: "writing",
       content,
       player: player.userName,
-      playerId: player.id,
+      playerId: player.id
     });
     console.log(room.game.sheets);
 
@@ -175,7 +175,7 @@ io.on("connection", (socket) => {
     room.game.stage.results.push({
       player,
       content,
-      sheetId,
+      sheetId
     });
 
     console.log(sheetId, "completeDrawing");
@@ -183,8 +183,8 @@ io.on("connection", (socket) => {
     room.game.sheets[sheetId].push({
       type: "drawing",
       content,
-        player: player.userName,
-       playerId: player.id,
+      player: player.userName,
+      playerId: player.id
     });
 
     if (room.game.stage.results.length == room.players.length) {
@@ -202,10 +202,10 @@ io.on("connection", (socket) => {
       player.connected = false;
       player.socket = null;
       if (!room.players.some(player => player.connected)) {
-            delete rooms[room.roomId];
-            console.log(Object.keys(rooms).length); 
-            return;
-        }
+        delete rooms[room.roomId];
+        console.log(Object.keys(rooms).length);
+        return;
+      }
       socket.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
     }
   });
