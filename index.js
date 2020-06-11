@@ -29,7 +29,7 @@ app.use(router.routes()).use(router.allowedMethods());
 
 const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
 const io = socketIo(server);
-io.origins("http://localhost:8080");
+io.origins(process.env.FRONTEND_URL || "http://localhost:8080");
 
 io.on("connection", socket => {
   console.log("a player connected");
