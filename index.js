@@ -32,7 +32,9 @@ const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
 const io = socketIo(server, {
   origins: FRONTEND_URL
 });
-io.origins(FRONTEND_URL);
+io.origins((origin, callback) => {
+  callback(null, true);
+});
 
 io.on("connection", socket => {
   console.log("a player connected");
