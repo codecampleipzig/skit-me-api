@@ -132,10 +132,12 @@ io.on("connection", (socket) => {
     player.ready = true;
     io.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
 
+    const connectedPlayers = room.players.filter((player) => player.connected);
     if (
-      room.players.every((player) => player.ready) &&
-      room.players.length > 1
+      connectedPlayers.every((player) => player.ready) &&
+      connectedPlayers.length > 1
     ) {
+      room.players = connectedPlayers;
       room.game = {
         stage: {
           name: "GameSeedPhase",
