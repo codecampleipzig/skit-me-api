@@ -5,6 +5,7 @@ const cors = require("@koa/cors");
 const { v4: uuidv4 } = require("uuid");
 
 const PORT = process.env.PORT || 1234;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:8080";
 
 const app = new Koa();
 const router = new KoaRouter();
@@ -28,8 +29,12 @@ app.use(cors());
 app.use(router.routes()).use(router.allowedMethods());
 
 const server = app.listen(PORT, () => console.log(`running on port ${PORT}`));
-const io = socketIo(server);
-io.origins("https://heuristic-stonebraker-43aa0c.netlify.app");
+const io = socketIo(server, {
+  origins: FRONTEND_URL,
+});
+io.origins((origin, callback) => {
+  callback(null, true);
+});
 
 io.on("connection", (socket) => {
   console.log("a player connected");
@@ -39,7 +44,7 @@ io.on("connection", (socket) => {
   function sendEndGame() {
     console.log("endgame");
     io.to(room.roomId).emit("endGame", "DONE", room.game.sheets);
-      
+
     // console.log("endgame1");
     // console.log(room.game.sheets);
     room.game = null;
@@ -98,28 +103,28 @@ io.on("connection", (socket) => {
       return;
     }
 
-      socket.join(roomId, () => {
-          if (room.players.length < 8) {
-              player = {
-                  id: uuidv4(),
-                  userName,
-                  socket,
-                  connected: true,
-                  ready: false,
-              };
-              // where is room.players ?
-              room.players.push(player);
+    socket.join(roomId, () => {
+      if (room.players.length < 8) {
+        player = {
+          id: uuidv4(),
+          userName,
+          socket,
+          connected: true,
+          ready: false,
+        };
+        // where is room.players ?
+        room.players.push(player);
 
-              respond({
-                  room: getSanitizedRoom(),
-                  playerId: player.id,
-              });
-              socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
-          } else {        
-              respond({
-                  error: "The room has already the maximum number of players in it!"
-              })
-          }
+        respond({
+          room: getSanitizedRoom(),
+          playerId: player.id,
+        });
+        socket.to(roomId).emit("roomUpdate", getSanitizedRoom());
+      } else {
+        respond({
+          error: "The room has already the maximum number of players in it!",
+        });
+      }
     });
   });
 
@@ -127,7 +132,10 @@ io.on("connection", (socket) => {
     player.ready = true;
     io.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
 
-    if (room.players.every((player) => player.ready) && room.players.length > 1 ) {
+    if (
+      room.players.every((player) => player.ready) &&
+      room.players.length > 1
+    ) {
       room.game = {
         stage: {
           name: "GameSeedPhase",
@@ -183,8 +191,8 @@ io.on("connection", (socket) => {
     room.game.sheets[sheetId].push({
       type: "drawing",
       content,
-        player: player.userName,
-       playerId: player.id,
+      player: player.userName,
+      playerId: player.id,
     });
 
     if (room.game.stage.results.length == room.players.length) {
@@ -201,11 +209,11 @@ io.on("connection", (socket) => {
     if (player) {
       player.connected = false;
       player.socket = null;
-      if (!room.players.some(player => player.connected)) {
-            delete rooms[room.roomId];
-            console.log(Object.keys(rooms).length); 
-            return;
-        }
+      if (!room.players.some((player) => player.connected)) {
+        delete rooms[room.roomId];
+        console.log(Object.keys(rooms).length);
+        return;
+      }
       socket.to(room.roomId).emit("roomUpdate", getSanitizedRoom());
     }
   });
